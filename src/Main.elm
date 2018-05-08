@@ -20,7 +20,9 @@ type alias Model =
     }
 
 type alias Config =
-    { spotify_client_id: String }
+    { spotify_client_id: String
+    , site_uri: String
+    }
 
 type alias Track =
     { name: String
@@ -76,7 +78,7 @@ update msg model =
             model
                 ! [ OAuth.Implicit.authorize
                         { clientId = model.config.spotify_client_id
-                        , redirectUri = "http://localhost:3000"
+                        , redirectUri = model.config.site_uri
                         , responseType = OAuth.Token -- Use the OAuth.Token response type
                         , scope = [ "user-modify-playback-state", "user-read-playback-state" ]
                         , state = Nothing
