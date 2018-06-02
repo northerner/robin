@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Html exposing (Html, text, div, h1, h2, img, button, p, input)
 import Html.Attributes exposing (src, style, disabled, placeholder, type_)
@@ -86,7 +86,7 @@ type Msg
     | RedirectToSignin
     | Tick Time
     | SetTrackURI String
-    | PlayThis
+    | PlayThis (Maybe String)
 
 
 type Control
@@ -174,8 +174,8 @@ update msg model =
         SetTrackURI trackURI ->
             ( { model | trackURI = Just trackURI }, Cmd.none )
 
-        PlayThis ->
-            case (model.token, model.trackURI) of
+        PlayThis trackURI ->
+            case (model.token, trackURI) of
                 (Just token, Just trackURI) ->
                     let
                         jsonBody =
@@ -245,16 +245,20 @@ controlRequest action token body =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.track of
-        Just track ->
-            case track.isPlaying of
-                True ->
-                    Time.every (Time.second) Tick
-                _ ->
-                    Sub.none
-        _ ->
-            Sub.none
+    Sub.batch
+        [ case model.track of
+              Just track ->
+                  case track.isPlaying of
+                      True ->
+                          Time.every (Time.second) Tick
+                      _ ->
+                          Sub.none
+              _ ->
+                  Sub.none
+        ,  newTrack PlayThis
+        ]
 
+port newTrack: (Maybe String -> msg) -> Sub msg
 
 ---- VIEW ----
 
@@ -275,7 +279,7 @@ view model =
                              , button [ onClick (Control Pause) ] [ text "Pause" ]
                              , button [ onClick (Control Next) ] [ text "Next" ] ]
                     , div [] [ input [ type_ "text", placeholder "Spotify track ID", onInput SetTrackURI ] []
-                             , button [ onClick PlayThis ] [ text "Play this!" ] ] ]
+                             , button [ onClick (PlayThis model.trackURI) ] [ text "Play this!" ] ] ]
                 _ ->
                     []
 
