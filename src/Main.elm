@@ -31,8 +31,8 @@ type alias Track =
     { artist: String
     , title: String
     , albumCoverUrl: String
-    , progressMs: Int
-    , durationMs: Int
+    , progressMs: Float
+    , durationMs: Float
     , isPlaying: Bool
     }
 
@@ -42,8 +42,8 @@ trackDecoder =
         (at ["item", "artists"] (index 0 (field "name" string)))
         (at ["item", "name"] string)
         (at ["item", "album", "images"] (index 0 (field "url" string)))
-        (field "progress_ms" int)
-        (at ["item", "duration_ms"] int)
+        (field "progress_ms" float)
+        (at ["item", "duration_ms"] float)
         (field "is_playing" bool)
 
 init : Config -> Navigation.Location -> ( Model, Cmd Msg )
@@ -82,6 +82,7 @@ type Msg
     | GetPlaying
     | PlayingResponse (Result Http.Error Track)
     | RedirectToSignin
+    | Tick Time
 
 
 type Control
@@ -120,7 +121,7 @@ update msg model =
             update GetPlaying model
 
         ControlResponse (Err _) ->
-            model ! []
+            update GetPlaying model
 
         GetPlaying ->
             case model.token of
@@ -137,7 +138,7 @@ update msg model =
                                 , timeout = Nothing
                                 }
                     in
-                        model ! [Process.sleep Time.second |> (\a -> (Http.send PlayingResponse req))]
+                        model ! [Process.sleep (Time.second * 2) |> (\a -> (Http.send PlayingResponse req))]
                 Nothing ->
                   model ! []
 
@@ -150,33 +151,54 @@ update msg model =
         RedirectToSignin ->
             ( model, Navigation.load model.config.site_uri )
 
+        Tick _ ->
+            case model.track of
+                Just track ->
+                    let
+                        newTrack = Just { track | progressMs = track.progressMs + 1000 }
+                        pollForStatus =
+                            track.progressMs > track.durationMs + 1000
+                    in
+                        case pollForStatus of
+                            True ->
+                                update GetPlaying model
+                            False ->
+                                { model | track = newTrack } ! [ Cmd.none ]
+                Nothing ->
+                    model ! []
+
 
 updateControl : Control -> Model -> OAuth.Token -> ( Model, Cmd Msg )
 updateControl control model token =
-    case control of
-        Play ->
+    case (control, model.track) of
+        (Play, Just track) ->
             let
                 req = controlRequest "play" token
+                playingTrack = Just { track | isPlaying = True }
             in
-                model ! [Http.send ControlResponse req]
+                { model | track = playingTrack } ! [Http.send ControlResponse req]
 
-        Pause ->
+        (Pause, Just track) ->
             let
                 req = controlRequest "pause" token
+                pausedTrack = Just { track | isPlaying = False }
             in
-                model ! [Http.send ControlResponse req]
+                { model | track = pausedTrack } ! [Http.send ControlResponse req]
 
-        Next ->
+        (Next, _) ->
             let
                 req = controlRequest "next" token
             in
                 model ! [Http.send ControlResponse req]
 
-        Previous ->
+        (Previous, _) ->
             let
                 req = controlRequest "previous" token
             in
                 model ! [Http.send ControlResponse req]
+
+        (_, _) ->
+            model ! []
 
 controlRequest : String -> OAuth.Token -> Http.Request String
 controlRequest action token =
@@ -198,6 +220,22 @@ controlRequest action token =
             }
 
 
+
+-- SUBSCRIPTIONS
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    case model.track of
+        Just track ->
+            case track.isPlaying of
+                True ->
+                    Time.every (Time.second) Tick
+                _ ->
+                    Sub.none
+        _ ->
+            Sub.none
+
+
 ---- VIEW ----
 
 
@@ -213,17 +251,20 @@ view model =
                     [ button [ onClick Authorize ] [ text "Sign in" ] ]
                 (_, Just track) ->
                     [ button [ onClick (Control Previous) ] [ text "Previous" ]
-                    , button [ onClick (Control Play), disabled track.isPlaying ] [ text "Play" ]
-                    , button [ onClick (Control Pause), disabled (not track.isPlaying)] [ text "Pause" ]
+                    , button [ onClick (Control Play) ] [ text "Play" ]
+                    , button [ onClick (Control Pause) ] [ text "Pause" ]
                     , button [ onClick (Control Next) ] [ text "Next" ] ]
                 _ ->
                     []
+
+        progress track =
+            text ((toString (track.progressMs / 1000)) ++ " / " ++ (toString (track.durationMs / 1000)))
 
         playing =
             case model.track of
                 Just track ->
                     [ p [] [ text (track.artist ++ " - " ++ track.title) ]
-                    , p [] [ text (toString track.progressMs ++ " / " ++ toString track.durationMs) ]
+                    , p [] [ progress track ]
                     , div [ style [ ("background", toCssUrl track.albumCoverUrl)
                                   , ("background-size", "cover")
                                   , ("background-position", "center")
@@ -251,5 +292,5 @@ main =
         { view = view
         , init = init
         , update = update
-        , subscriptions = always Sub.none
+        , subscriptions = subscriptions
         }
