@@ -1,13 +1,14 @@
 module Main exposing (..)
 
-import Html exposing (Html, text, div, h1, h2, img, button, p)
-import Html.Attributes exposing (src, style, disabled)
-import Html.Events exposing (onClick)
+import Html exposing (Html, text, div, h1, h2, img, button, p, input)
+import Html.Attributes exposing (src, style, disabled, placeholder, type_)
+import Html.Events exposing (onClick, onInput)
 import OAuth
 import OAuth.Implicit
 import Navigation
 import Http
 import Json.Decode exposing (int, string, float, bool, Decoder, map6, at, index, andThen, field)
+import Json.Encode as Encode
 import Time exposing (Time)
 import Task exposing (Task)
 import Process
@@ -20,6 +21,7 @@ type alias Model =
     { token: Maybe OAuth.Token
     , config: Config
     , track: Maybe Track
+    , trackURI: Maybe String
     }
 
 type alias Config =
@@ -51,7 +53,7 @@ init config location =
     case OAuth.Implicit.parse location of
         Ok { token, expiresIn } ->
             let
-                model = { token = Just token, config = config, track = Nothing }
+                model = { token = Just token, config = config, track = Nothing, trackURI = Nothing }
 
                 timeoutIn =
                     case expiresIn of
@@ -68,7 +70,7 @@ init config location =
             in
                 (model , Cmd.batch [ startAuthTimeout, startPlayingTimeout ] )
         Err _ ->
-            ( { token = Nothing, config = config, track = Nothing }, Cmd.none )
+            ( { token = Nothing, config = config, track = Nothing, trackURI = Nothing }, Cmd.none )
 
 
 ---- UPDATE ----
@@ -83,6 +85,8 @@ type Msg
     | PlayingResponse (Result Http.Error Track)
     | RedirectToSignin
     | Tick Time
+    | SetTrackURI String
+    | PlayThis
 
 
 type Control
@@ -167,41 +171,57 @@ update msg model =
                 Nothing ->
                     model ! []
 
+        SetTrackURI trackURI ->
+            ( { model | trackURI = Just trackURI }, Cmd.none )
+
+        PlayThis ->
+            case (model.token, model.trackURI) of
+                (Just token, Just trackURI) ->
+                    let
+                        jsonBody =
+                            Encode.object
+                                [ ("uris", Encode.list [ Encode.string trackURI ] ) ]
+                        req = controlRequest "play" token (Http.jsonBody jsonBody)
+                    in
+                        model ! [Http.send ControlResponse req]
+                (_, _) ->
+                    model ! []
+
 
 updateControl : Control -> Model -> OAuth.Token -> ( Model, Cmd Msg )
 updateControl control model token =
     case (control, model.track) of
         (Play, Just track) ->
             let
-                req = controlRequest "play" token
+                req = controlRequest "play" token Http.emptyBody
                 playingTrack = Just { track | isPlaying = True }
             in
                 { model | track = playingTrack } ! [Http.send ControlResponse req]
 
         (Pause, Just track) ->
             let
-                req = controlRequest "pause" token
+                req = controlRequest "pause" token Http.emptyBody
                 pausedTrack = Just { track | isPlaying = False }
             in
                 { model | track = pausedTrack } ! [Http.send ControlResponse req]
 
         (Next, _) ->
             let
-                req = controlRequest "next" token
+                req = controlRequest "next" token Http.emptyBody
             in
                 model ! [Http.send ControlResponse req]
 
         (Previous, _) ->
             let
-                req = controlRequest "previous" token
+                req = controlRequest "previous" token Http.emptyBody
             in
                 model ! [Http.send ControlResponse req]
 
         (_, _) ->
             model ! []
 
-controlRequest : String -> OAuth.Token -> Http.Request String
-controlRequest action token =
+controlRequest : String -> OAuth.Token -> Http.Body -> Http.Request String
+controlRequest action token body =
     let
         method =
             case action of
@@ -211,7 +231,7 @@ controlRequest action token =
     in
         Http.request
             { method = method
-            , body = Http.emptyBody
+            , body = body
             , headers = OAuth.use token []
             , withCredentials = False
             , url = "https://api.spotify.com/v1/me/player/" ++ action
@@ -250,10 +270,12 @@ view model =
                 (Nothing, Nothing) ->
                     [ button [ onClick Authorize ] [ text "Sign in" ] ]
                 (_, Just track) ->
-                    [ button [ onClick (Control Previous) ] [ text "Previous" ]
-                    , button [ onClick (Control Play) ] [ text "Play" ]
-                    , button [ onClick (Control Pause) ] [ text "Pause" ]
-                    , button [ onClick (Control Next) ] [ text "Next" ] ]
+                    [ div [] [ button [ onClick (Control Previous) ] [ text "Previous" ]
+                             , button [ onClick (Control Play) ] [ text "Play" ]
+                             , button [ onClick (Control Pause) ] [ text "Pause" ]
+                             , button [ onClick (Control Next) ] [ text "Next" ] ]
+                    , div [] [ input [ type_ "text", placeholder "Spotify track ID", onInput SetTrackURI ] []
+                             , button [ onClick PlayThis ] [ text "Play this!" ] ] ]
                 _ ->
                     []
 
@@ -272,7 +294,8 @@ view model =
                                   , ("min-height", "60vh")
                                   ]] []]
                 Nothing ->
-                    [ p [ onClick GetPlaying ] [ text "Click for track name" ] ]
+                    []
+
     in
       div []
           [ h1 [] [ text "Robin" ]
