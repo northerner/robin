@@ -10,6 +10,7 @@ import Navigation
 import Process
 import Time
 import OutsideInfo exposing (..)
+import Html.Styled exposing (toUnstyled)
 
 
 init : Config -> Navigation.Location -> ( Model, Cmd Msg )
@@ -70,7 +71,7 @@ main : Program Config Model Msg
 main =
     Navigation.programWithFlags
         (always NoOp)
-        { view = view
+        { view = view >> toUnstyled
         , init = init
         , update = update
         , subscriptions = subscriptions
