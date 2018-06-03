@@ -11,6 +11,7 @@ import Navigation
 import Process
 import Json.Decode exposing (int, string, float, bool, Decoder, map, map6, at, index, andThen, field)
 import Json.Encode as Encode
+import Delay
 
 type Msg
     = NoOp
@@ -18,6 +19,7 @@ type Msg
     | Control (Control)
     | ControlResponse (Result Http.Error String)
     | GetPlaying
+    | DelayedGetPlaying
     | PlayingResponse (Result Http.Error Track)
     | RedirectToSignin
     | Tick Time
@@ -62,10 +64,23 @@ update msg model =
 
 
         ControlResponse (Ok resp) ->
-            update GetPlaying model
+            update DelayedGetPlaying model
 
-        ControlResponse (Err _) ->
-            update GetPlaying model
+        ControlResponse (Err error) ->
+            case error of
+                Http.BadStatus response ->
+                    case response.status.code of
+                        403 ->
+                          -- TODO: deal with 403
+                          -- unfortunately being signed out and sending
+                          -- invalid commands (while signed in) give same
+                          -- 403 error
+                          --
+                          -- update Authorize model
+                            model ! []
+                        _ ->
+                            model ! []
+                _ -> model ! []
 
         GetPlaying ->
             case model.token of
@@ -82,9 +97,12 @@ update msg model =
                                 , timeout = Nothing
                                 }
                     in
-                        model ! [Process.sleep (Time.second * 2) |> (\a -> (Http.send PlayingResponse req))]
+                        model ! [ Http.send PlayingResponse req ]
                 Nothing ->
                   model ! []
+
+        DelayedGetPlaying ->
+            model ! [ Delay.after 2 Time.second GetPlaying ]
 
         PlayingResponse (Ok track) ->
             ( { model | track = Just track }, Cmd.none )
@@ -115,16 +133,17 @@ update msg model =
             ( { model | trackURI = Just trackURI }, Cmd.none )
 
         PlayThis trackURI ->
-            case (model.token, trackURI) of
-                (Just token, Just trackURI) ->
+            case (model.token, trackURI, model.track) of
+                (Just token, Just trackURI, Just track) ->
                     let
                         jsonBody =
                             Encode.object
                                 [ ("uris", Encode.list [ Encode.string trackURI ] ) ]
                         req = controlRequest "play" token (Http.jsonBody jsonBody)
+                        playingTrack = Just { track | isPlaying = True }
                     in
-                        model ! [Http.send ControlResponse req]
-                (_, _) ->
+                        { model | track = playingTrack } ! [Http.send ControlResponse req]
+                (_, _, _) ->
                     model ! []
 
         SignInToFirebase ->

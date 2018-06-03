@@ -49,7 +49,14 @@ view model =
                     []
 
         progress track =
-            text ((toString (track.progressMs / 1000)) ++ " / " ++ (toString (track.durationMs / 1000)))
+            styled div [ height (px 2)
+                       , width (vw 100)
+                       , backgroundColor Colors.black
+                       ] [] [ styled div [ height (px 2)
+                                         , width (vw ((track.progressMs / track.durationMs) * 100))
+                                         , backgroundColor theme.primary
+                                         ] [] []
+                       ]
 
         playing =
             case model.track of
