@@ -1,8 +1,8 @@
 port module OutsideInfo exposing (..)
 
-import Model exposing (User)
+import Model exposing (User, Channel)
 
-import Json.Decode exposing (decodeValue, map, field, string)
+import Json.Decode exposing (decodeValue, map, map2, field, string)
 import Json.Encode
 
 
@@ -17,6 +17,9 @@ sendInfoOutside info =
 
         Broadcast trackURI ->
             infoForOutside { tag = "Broadcast", data = Json.Encode.string trackURI }
+
+        GetChannels ->
+            infoForOutside { tag = "GetChannels", data = Json.Encode.null }
 
 getInfoFromOutside : (InfoForElm -> msg) -> (String -> msg) -> Sub msg
 getInfoFromOutside tagger onError =
@@ -39,6 +42,14 @@ getInfoFromOutside tagger onError =
                         Err e ->
                             onError e
 
+                "AllChannels" ->
+                    case decodeValue (Json.Decode.list channelDecoder) outsideInfo.data of
+                        Ok channels ->
+                            tagger <| AllChannels channels
+
+                        Err e ->
+                            onError e
+
                 _ ->
                     onError <| "Unexpected info from outside: " ++ toString outsideInfo
         )
@@ -47,16 +58,22 @@ userDecoder =
     map User
         (field "uid" string)
 
+channelDecoder =
+    map2 Channel
+        (field "nowPlayingURI" string)
+        (field "name" string)
+
 
 type InfoForOutside
     = SignInToFirebase
     | LogError String
     | Broadcast String
-
+    | GetChannels
 
 type InfoForElm
     = NewTrack String
     | NewUser User
+    | AllChannels (List Channel)
 
 
 type alias GenericOutsideData =

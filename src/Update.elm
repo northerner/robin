@@ -1,6 +1,6 @@
 module Update exposing (..)
 
-import Model exposing (Model, Config, Track, User)
+import Model exposing (Model, Config, Track, User, Channel)
 import OutsideInfo exposing (InfoForElm, sendInfoOutside)
 
 import OAuth
@@ -8,10 +8,10 @@ import OAuth.Implicit
 import Time exposing (Time)
 import Http
 import Navigation
-import Process
 import Json.Decode exposing (int, string, float, bool, Decoder, map, map6, at, index, andThen, field)
 import Json.Encode as Encode
 import Delay
+import List.Extra exposing (remove)
 
 type Msg
     = NoOp
@@ -29,6 +29,8 @@ type Msg
     | Outside InfoForElm
     | LogErr String
     | Broadcast (Maybe String)
+    | GetChannels
+    | SwitchChannel Channel
 
 
 type Control
@@ -107,8 +109,12 @@ update msg model =
         PlayingResponse (Ok track) ->
             ( { model | track = Just track }, Cmd.none )
 
-        PlayingResponse (Err _) ->
-            model ! []
+        PlayingResponse (Err error) ->
+            case error of
+                Http.BadStatus response ->
+                    update (LogErr response.body) model
+                _ ->
+                    model ! []
 
         RedirectToSignin ->
             ( model, Navigation.load model.config.site_uri )
@@ -149,6 +155,9 @@ update msg model =
         SignInToFirebase ->
             model ! [ sendInfoOutside OutsideInfo.SignInToFirebase ]
 
+        GetChannels ->
+            model ! [ sendInfoOutside OutsideInfo.GetChannels ]
+
         Outside infoForElm ->
             case infoForElm of
                 OutsideInfo.NewTrack trackURI ->
@@ -156,6 +165,9 @@ update msg model =
 
                 OutsideInfo.NewUser user ->
                     { model | user = Just user } ! []
+
+                OutsideInfo.AllChannels channels ->
+                    { model | channels = { active = Nothing, inactive = channels } } ! []
 
         LogErr err ->
             model ! [ sendInfoOutside (OutsideInfo.LogError err) ]
@@ -166,6 +178,20 @@ update msg model =
                     model ! [ sendInfoOutside (OutsideInfo.Broadcast trackURI) ]
                 (_, _) ->
                     model ! []
+
+        SwitchChannel channel ->
+            let
+                newChannels = remove channel model.channels.inactive
+            in
+                case model.channels.active of
+                    Just oldActive ->
+                        { model | channels = { active = Just channel
+                                             , inactive = (newChannels ++ [ oldActive ] )
+                                             } } ! []
+                    Nothing ->
+                        { model | channels = { active = Just channel
+                                             , inactive = newChannels
+                                             } } ! []
 
 
 updateControl : Control -> Model -> OAuth.Token -> ( Model, Cmd Msg )

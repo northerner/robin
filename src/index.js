@@ -25,7 +25,7 @@ db.settings({timestampsInSnapshots: true});
 db.collection("tracks").doc("now-playing")
   .onSnapshot(function(doc) {
     console.log("Current data: ", doc.data());
-    app.ports.infoForElm.send({ tag: "NewTrack", data: doc.data().uri });
+    //app.ports.infoForElm.send({ tag: "NewTrack", data: doc.data().uri });
   });
 
 
@@ -42,6 +42,11 @@ app.ports.infoForOutside.subscribe(msg => {
     });
   } else if (msg.tag == "Broadcast") {
     db.collection("tracks").doc("now-playing").update({uri: msg.data})
+  } else if (msg.tag == "GetChannels") {
+    db.collection("channels").get().then(function(querySnapshot) {
+      app.ports.infoForElm.send({ tag: "AllChannels",
+                                  data: querySnapshot.docs.map(doc => { return doc.data() } ) });
+    });
   }
 });
 

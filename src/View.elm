@@ -6,7 +6,7 @@ import Update exposing (..)
 import Html.Styled.Events exposing (onClick, onInput)
 import Css exposing (..)
 import Css.Colors as Colors
-import Html.Styled exposing (styled, Html, Attribute, text, div, h1, h2, img, button, p, input)
+import Html.Styled exposing (styled, Html, Attribute, text, div, h1, h2, img, button, p, input, span)
 import Html.Styled.Attributes exposing (css, href, src, style, disabled, placeholder, type_)
 
 
@@ -75,9 +75,27 @@ view model =
                 _ ->
                     [ btn [ onClick SignInToFirebase ] [ text "Sign in to DJ" ] ]
 
+        channelButton channel =
+            btn [ onClick (SwitchChannel channel) ] [ text channel.name ]
+
+        channels =
+            case (model.channels.active, model.channels.inactive) of
+                (Nothing, []) ->
+                    [ btn [ onClick GetChannels ] [ text "Get channels" ] ]
+
+                (Nothing, inactive) ->
+                    [ span [] [ text "Channels" ] ]
+                    ++ List.map channelButton inactive
+
+                (Just active, inactive) ->
+                    [ span [] [ text "Channels" ] ]
+                    ++ List.map channelButton inactive
+                    ++ [ styled span [ textDecoration underline ] [] [ text ("Tuned to: " ++ active.name) ] ]
+
     in
       styled div [] []
-          [ h1 [] [ text "Robin" ]
+          [ div [] channels
+          , h1 [] [ text "Robin" ]
           , div [] controls
           , div [] admin
           , div [] playing

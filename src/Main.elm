@@ -22,7 +22,8 @@ init config location =
                         , config = config
                         , track = Nothing
                         , trackURI = Nothing
-                        , user = Nothing }
+                        , user = Nothing
+                        , channels = { active = Nothing, inactive = [] } }
 
                 timeoutIn =
                     case expiresIn of
@@ -44,6 +45,7 @@ init config location =
               , track = Nothing
               , trackURI = Nothing
               , user = Nothing
+              , channels = { active = Nothing, inactive = [] }
               } , Cmd.none )
 
 

@@ -8,6 +8,7 @@ type alias Model =
     , track: Maybe Track
     , trackURI: Maybe String
     , user: Maybe User
+    , channels: ChannelList
     }
 
 type alias Config =
@@ -26,3 +27,11 @@ type alias Track =
 
 type alias User =
     { uid: String }
+
+type alias Channel =
+    { nowPlayingURI: String
+    , name: String }
+
+type alias ChannelList =
+    { active: Maybe Channel
+    , inactive: List Channel }
