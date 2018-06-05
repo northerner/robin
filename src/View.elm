@@ -41,10 +41,9 @@ view model =
                 (Nothing, Nothing) ->
                     [ btn [ onClick Authorize ] [ text "Sign in with Spotify" ] ]
                 (_, Just track) ->
-                    [ div [] [ btn [ onClick (Control Previous) ] [ text "Previous" ]
-                             , btn [ onClick (Control Play) ] [ text "Play" ]
+                    [ div [] [ btn [ onClick (Control Play) ] [ text "Play" ]
                              , btn [ onClick (Control Pause) ] [ text "Pause" ]
-                             , btn [ onClick (Control Next) ] [ text "Next" ] ] ]
+                             ] ]
                 _ ->
                     []
 

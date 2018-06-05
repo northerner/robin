@@ -185,13 +185,15 @@ update msg model =
             in
                 case model.channels.active of
                     Just oldActive ->
-                        { model | channels = { active = Just channel
-                                             , inactive = (newChannels ++ [ oldActive ] )
-                                             } } ! []
+                        update (PlayThis (Just channel.nowPlayingURI)) (
+                               { model | channels = { active = Just channel
+                                                    , inactive = (newChannels ++ [ oldActive ] )
+                                                    } } )
                     Nothing ->
-                        { model | channels = { active = Just channel
-                                             , inactive = newChannels
-                                             } } ! []
+                        update (PlayThis (Just channel.nowPlayingURI)) (
+                               { model | channels = { active = Just channel
+                                                    , inactive = newChannels
+                                                    } } )
 
 
 updateControl : Control -> Model -> OAuth.Token -> ( Model, Cmd Msg )
