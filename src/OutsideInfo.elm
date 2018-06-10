@@ -2,7 +2,7 @@ port module OutsideInfo exposing (..)
 
 import Model exposing (User, Channel)
 
-import Json.Decode exposing (decodeValue, map, map2, field, string)
+import Json.Decode exposing (decodeValue, map, map2, map3, field, string, maybe)
 import Json.Encode
 
 
@@ -20,6 +20,9 @@ sendInfoOutside info =
 
         GetChannels ->
             infoForOutside { tag = "GetChannels", data = Json.Encode.null }
+
+        CreateOrUpdateChannelName channelName ->
+            infoForOutside { tag = "CreateOrUpdateChannelName", data = Json.Encode.string channelName }
 
 getInfoFromOutside : (InfoForElm -> msg) -> (String -> msg) -> Sub msg
 getInfoFromOutside tagger onError =
@@ -59,8 +62,9 @@ userDecoder =
         (field "uid" string)
 
 channelDecoder =
-    map2 Channel
-        (field "nowPlayingURI" string)
+    map3 Channel
+        (maybe (field "nowPlayingURI" string))
+        (maybe (field "ownerUID" string))
         (field "name" string)
 
 
@@ -69,6 +73,7 @@ type InfoForOutside
     | LogError String
     | Broadcast String
     | GetChannels
+    | CreateOrUpdateChannelName String
 
 type InfoForElm
     = NewTrack String

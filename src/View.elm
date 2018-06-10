@@ -70,7 +70,9 @@ view model =
             case model.user of
                 Just user ->
                     [ div [] [ input [ type_ "text", placeholder "Spotify track ID", onInput SetTrackURI ] []
-                             , btn [ onClick (Broadcast model.trackURI) ] [ text "Play this!" ] ] ]
+                             , btn [ onClick (Broadcast model.trackURI) ] [ text "Play this!" ]
+                             , input [ type_ "text", placeholder "Name your channel", onInput SetNewChannelName ] []
+                             , btn [ onClick (CreateChannel model.channelName) ] [ text "Create channel" ] ] ]
                 _ ->
                     [ btn [ onClick SignInToFirebase ] [ text "Sign in to DJ" ] ]
 

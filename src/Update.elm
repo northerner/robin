@@ -31,6 +31,8 @@ type Msg
     | Broadcast (Maybe String)
     | GetChannels
     | SwitchChannel Channel
+    | SetNewChannelName String
+    | CreateChannel (Maybe String)
 
 
 type Control
@@ -185,15 +187,25 @@ update msg model =
             in
                 case model.channels.active of
                     Just oldActive ->
-                        update (PlayThis (Just channel.nowPlayingURI)) (
+                        update (PlayThis channel.nowPlayingURI) (
                                { model | channels = { active = Just channel
                                                     , inactive = (newChannels ++ [ oldActive ] )
                                                     } } )
                     Nothing ->
-                        update (PlayThis (Just channel.nowPlayingURI)) (
+                        update (PlayThis channel.nowPlayingURI) (
                                { model | channels = { active = Just channel
                                                     , inactive = newChannels
                                                     } } )
+
+        SetNewChannelName channelName ->
+            { model | channelName = Just channelName } ! []
+
+        CreateChannel channelName ->
+            case (model.user, channelName) of
+                (Just user, Just channelName) ->
+                    model ! [ sendInfoOutside (OutsideInfo.CreateOrUpdateChannelName channelName) ]
+                (_, _) ->
+                    model ! []
 
 
 updateControl : Control -> Model -> OAuth.Token -> ( Model, Cmd Msg )

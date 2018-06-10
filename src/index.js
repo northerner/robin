@@ -47,6 +47,18 @@ app.ports.infoForOutside.subscribe(msg => {
       app.ports.infoForElm.send({ tag: "AllChannels",
                                   data: querySnapshot.docs.map(doc => { return doc.data() } ) });
     });
+  } else if (msg.tag == "CreateOrUpdateChannelName") {
+    const user = firebase.auth().currentUser.uid
+    db.collection("channels")
+      .where("ownerUID", "==", user)
+      .get().then(function(querySnapshot) {
+        if (querySnapshot.empty) {
+          db.collection("channels").add({ownerUID: user, name: msg.data})
+        } else {
+          db.collection("channels").doc(querySnapshot.docs[0].id).update({name: msg.data})
+        }
+      });
   }
+
 });
 

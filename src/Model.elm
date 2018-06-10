@@ -9,6 +9,7 @@ type alias Model =
     , trackURI: Maybe String
     , user: Maybe User
     , channels: ChannelList
+    , channelName: Maybe String
     }
 
 type alias Config =
@@ -29,7 +30,8 @@ type alias User =
     { uid: String }
 
 type alias Channel =
-    { nowPlayingURI: String
+    { nowPlayingURI: Maybe String
+    , ownerUID: Maybe String
     , name: String }
 
 type alias ChannelList =
