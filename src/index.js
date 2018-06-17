@@ -24,13 +24,11 @@ db.settings({timestampsInSnapshots: true});
 
 db.collection("tracks").doc("now-playing")
   .onSnapshot(function(doc) {
-    console.log("Current data: ", doc.data());
     //app.ports.infoForElm.send({ tag: "NewTrack", data: doc.data().uri });
   });
 
 
 app.ports.infoForOutside.subscribe(msg => {
-  console.error(msg.tag);
   if (msg.tag == "LogError") {
     console.error(msg.data);
   } else if (msg.tag == "SignInToFirebase") {
@@ -43,20 +41,31 @@ app.ports.infoForOutside.subscribe(msg => {
   } else if (msg.tag == "Broadcast") {
     db.collection("tracks").doc("now-playing").update({uri: msg.data})
   } else if (msg.tag == "GetChannels") {
-    db.collection("channels").get().then(function(querySnapshot) {
+    db.collection("channels").where("name", ">=", "0").onSnapshot(function(querySnapshot) {
       app.ports.infoForElm.send({ tag: "AllChannels",
-                                  data: querySnapshot.docs.map(doc => { return doc.data() } ) });
+                                  data: querySnapshot.docs.map(doc => {
+                                    const data = doc.data()
+                                    return Object.assign({}, data, { ownerUID: doc.id })
+                                  } ) });
     });
-  } else if (msg.tag == "CreateOrUpdateChannelName") {
+  } else if (msg.tag == "CreateOrUpdateChannel") {
     const user = firebase.auth().currentUser.uid
     db.collection("channels")
-      .where("ownerUID", "==", user)
-      .get().then(function(querySnapshot) {
-        if (querySnapshot.empty) {
-          db.collection("channels").add({ownerUID: user, name: msg.data})
-        } else {
-          db.collection("channels").doc(querySnapshot.docs[0].id).update({name: msg.data})
-        }
+      .doc(user).set(msg.data).catch(function(error) {
+        console.log(error);
+    });
+  } else if (msg.tag == "ChangeChannel") {
+    db.collection("channels").doc(msg.data)
+      .onSnapshot(function(doc) {
+        // TODO: Refactor out newtrack interface to one updating the playing song in current channel
+        app.ports.infoForElm.send({ tag: "NewTrack", data: doc.data().nowPlayingURI});
+      });
+  } else if (msg.tag == "GetUserChannel") {
+    db.collection("channels").doc(msg.data)
+      .onSnapshot(function(doc) {
+        app.ports.infoForElm.send({ tag: "UpdateUserChannel",
+                                    data: Object.assign({}, doc.data(), { ownerUID: doc.id })
+                                  });
       });
   }
 

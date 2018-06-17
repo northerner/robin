@@ -27,11 +27,12 @@ type alias Track =
     }
 
 type alias User =
-    { uid: String }
+    { uid: String
+    , channel: Channel }
 
 type alias Channel =
     { nowPlayingURI: Maybe String
-    , ownerUID: Maybe String
+    , ownerUID: String
     , name: String }
 
 type alias ChannelList =

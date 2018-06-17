@@ -1,7 +1,7 @@
 module Update exposing (..)
 
 import Model exposing (Model, Config, Track, User, Channel)
-import OutsideInfo exposing (InfoForElm, sendInfoOutside)
+import OutsideInfo exposing (InfoForElm, RawUser, channelWithDefault, sendInfoOutside)
 
 import OAuth
 import OAuth.Implicit
@@ -31,8 +31,8 @@ type Msg
     | Broadcast (Maybe String)
     | GetChannels
     | SwitchChannel Channel
-    | SetNewChannelName String
-    | CreateChannel (Maybe String)
+    | SetChannelName String
+    | CreateChannel (Maybe String) (Maybe String)
 
 
 type Control
@@ -137,9 +137,6 @@ update msg model =
                 Nothing ->
                     model ! []
 
-        SetTrackURI trackURI ->
-            ( { model | trackURI = Just trackURI }, Cmd.none )
-
         PlayThis trackURI ->
             case (model.token, trackURI, model.track) of
                 (Just token, Just trackURI, Just track) ->
@@ -165,11 +162,21 @@ update msg model =
                 OutsideInfo.NewTrack trackURI ->
                     update (PlayThis (Just trackURI)) model
 
-                OutsideInfo.NewUser user ->
-                    { model | user = Just user } ! []
+                OutsideInfo.NewUser rawUser ->
+                    let
+                        user = { uid = rawUser.uid, channel = channelWithDefault rawUser.uid }
+                    in
+                        { model | user = Just user } ! [ sendInfoOutside (OutsideInfo.GetUserChannel user) ]
 
                 OutsideInfo.AllChannels channels ->
                     { model | channels = { active = Nothing, inactive = channels } } ! []
+
+                OutsideInfo.UpdateUserChannel channel ->
+                    case model.user of
+                        Just user ->
+                          { model | user = Just { user | channel = channel } } ! []
+                        _ ->
+                          model ! []
 
         LogErr err ->
             model ! [ sendInfoOutside (OutsideInfo.LogError err) ]
@@ -187,24 +194,33 @@ update msg model =
             in
                 case model.channels.active of
                     Just oldActive ->
-                        update (PlayThis channel.nowPlayingURI) (
                                { model | channels = { active = Just channel
                                                     , inactive = (newChannels ++ [ oldActive ] )
-                                                    } } )
+                                                    } }
+                                                    ! [ sendInfoOutside (OutsideInfo.ChangeChannel channel) ]
                     Nothing ->
-                        update (PlayThis channel.nowPlayingURI) (
                                { model | channels = { active = Just channel
                                                     , inactive = newChannels
-                                                    } } )
+                                                    } }
+                                                    ! [ sendInfoOutside (OutsideInfo.ChangeChannel channel) ]
 
-        SetNewChannelName channelName ->
+        SetTrackURI trackURI ->
+            { model | trackURI = Just trackURI } ! []
+
+        SetChannelName channelName ->
             { model | channelName = Just channelName } ! []
 
-        CreateChannel channelName ->
-            case (model.user, channelName) of
-                (Just user, Just channelName) ->
-                    model ! [ sendInfoOutside (OutsideInfo.CreateOrUpdateChannelName channelName) ]
-                (_, _) ->
+        CreateChannel channelName trackURI ->
+            case model.user of
+                Just user ->
+                    let
+                        currentChannel = user.channel
+                        newName = Maybe.withDefault "New channel" channelName
+                        channel = { currentChannel | name = newName, nowPlayingURI = trackURI }
+                        newUser = Just { user | channel = channel }
+                    in
+                        { model | user = newUser } ! [ sendInfoOutside (OutsideInfo.CreateOrUpdateChannel channel) ]
+                _ ->
                     model ! []
 
 

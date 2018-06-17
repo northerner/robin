@@ -3,26 +3,32 @@ port module OutsideInfo exposing (..)
 import Model exposing (User, Channel)
 
 import Json.Decode exposing (decodeValue, map, map2, map3, field, string, maybe)
-import Json.Encode
+import Json.Encode as Encode
 
 
 sendInfoOutside : InfoForOutside -> Cmd msg
 sendInfoOutside info =
     case info of
         SignInToFirebase ->
-            infoForOutside { tag = "SignInToFirebase", data = Json.Encode.null }
+            infoForOutside { tag = "SignInToFirebase", data = Encode.null }
 
         LogError err ->
-            infoForOutside { tag = "LogError", data = Json.Encode.string err }
+            infoForOutside { tag = "LogError", data = Encode.string err }
 
         Broadcast trackURI ->
-            infoForOutside { tag = "Broadcast", data = Json.Encode.string trackURI }
+            infoForOutside { tag = "Broadcast", data = Encode.string trackURI }
 
         GetChannels ->
-            infoForOutside { tag = "GetChannels", data = Json.Encode.null }
+            infoForOutside { tag = "GetChannels", data = Encode.null }
 
-        CreateOrUpdateChannelName channelName ->
-            infoForOutside { tag = "CreateOrUpdateChannelName", data = Json.Encode.string channelName }
+        CreateOrUpdateChannel channel ->
+            infoForOutside { tag = "CreateOrUpdateChannel", data = channelEncoder channel }
+
+        ChangeChannel channel ->
+            infoForOutside { tag = "ChangeChannel", data = Encode.string channel.ownerUID }
+
+        GetUserChannel user ->
+            infoForOutside { tag = "GetUserChannel", data = Encode.string user.uid }
 
 getInfoFromOutside : (InfoForElm -> msg) -> (String -> msg) -> Sub msg
 getInfoFromOutside tagger onError =
@@ -38,7 +44,7 @@ getInfoFromOutside tagger onError =
                             onError e
 
                 "NewUser" ->
-                    case decodeValue userDecoder outsideInfo.data of
+                    case decodeValue rawUserDecoder outsideInfo.data of
                         Ok user ->
                             tagger <| NewUser user
 
@@ -53,36 +59,61 @@ getInfoFromOutside tagger onError =
                         Err e ->
                             onError e
 
+                "UpdateUserChannel" ->
+                    case decodeValue channelDecoder outsideInfo.data of
+                        Ok channel ->
+                            tagger <| UpdateUserChannel channel
+
+                        Err e ->
+                            onError e
+
                 _ ->
                     onError <| "Unexpected info from outside: " ++ toString outsideInfo
         )
 
-userDecoder =
-    map User
+rawUserDecoder =
+    map RawUser
         (field "uid" string)
 
 channelDecoder =
     map3 Channel
         (maybe (field "nowPlayingURI" string))
-        (maybe (field "ownerUID" string))
+        (field "ownerUID" string)
         (field "name" string)
 
+channelWithDefault uid =
+    { ownerUID = uid
+    , name = "New channel"
+    , nowPlayingURI = Nothing }
+
+channelEncoder : Channel -> Encode.Value
+channelEncoder channel =
+    Encode.object
+        [ ("nowPlayingURI", Encode.string (Maybe.withDefault "" channel.nowPlayingURI))
+        , ("name", Encode.string channel.name)
+        ]
 
 type InfoForOutside
     = SignInToFirebase
     | LogError String
     | Broadcast String
     | GetChannels
-    | CreateOrUpdateChannelName String
+    | CreateOrUpdateChannel Channel
+    | ChangeChannel Channel
+    | GetUserChannel User
 
 type InfoForElm
     = NewTrack String
-    | NewUser User
+    | NewUser RawUser
     | AllChannels (List Channel)
+    | UpdateUserChannel Channel
 
 
 type alias GenericOutsideData =
-    { tag : String, data : Json.Encode.Value }
+    { tag : String, data : Encode.Value }
+
+type alias RawUser =
+    { uid: String }
 
 
 port infoForOutside : GenericOutsideData -> Cmd msg

@@ -7,7 +7,7 @@ import Html.Styled.Events exposing (onClick, onInput)
 import Css exposing (..)
 import Css.Colors as Colors
 import Html.Styled exposing (styled, Html, Attribute, text, div, h1, h2, img, button, p, input, span)
-import Html.Styled.Attributes exposing (css, href, src, style, disabled, placeholder, type_)
+import Html.Styled.Attributes exposing (css, href, src, style, disabled, placeholder, type_, defaultValue)
 
 
 theme : { secondary : Color, primary : Color }
@@ -69,12 +69,23 @@ view model =
         admin =
             case model.user of
                 Just user ->
-                    [ div [] [ input [ type_ "text", placeholder "Spotify track ID", onInput SetTrackURI ] []
-                             , btn [ onClick (Broadcast model.trackURI) ] [ text "Play this!" ]
-                             , input [ type_ "text", placeholder "Name your channel", onInput SetNewChannelName ] []
-                             , btn [ onClick (CreateChannel model.channelName) ] [ text "Create channel" ] ] ]
+                    styled div [ border3 (px 1) solid theme.primary
+                               , width (vw 40)
+                               , padding (em 0.5)
+                               , flexDirection column
+                               , (property "display" "flex")
+                               ] [] [ p [] [ text ("DJing channel " ++ user.channel.name) ]
+                                    , input [ type_ "text"
+                                            , placeholder "Spotify track ID"
+                                            , defaultValue (Maybe.withDefault "" user.channel.nowPlayingURI)
+                                            , onInput SetTrackURI ] []
+                                    , input [ type_ "text"
+                                            , placeholder "Channel name"
+                                            , defaultValue user.channel.name
+                                            , onInput SetChannelName ] []
+                                    , btn [ onClick (CreateChannel model.channelName model.trackURI) ] [ text "Update channel" ] ]
                 _ ->
-                    [ btn [ onClick SignInToFirebase ] [ text "Sign in to DJ" ] ]
+                    btn [ onClick SignInToFirebase ] [ text "Sign in to DJ" ]
 
         channelButton channel =
             btn [ onClick (SwitchChannel channel) ] [ text channel.name ]
@@ -94,12 +105,15 @@ view model =
                     ++ [ styled span [ textDecoration underline ] [] [ text ("Tuned to: " ++ active.name) ] ]
 
     in
-      styled div [] []
-          [ div [] channels
-          , h1 [] [ text "Robin" ]
-          , div [] controls
-          , div [] admin
-          , div [] playing
-          ]
+      styled div [ width (vw 100)
+                 , flexDirection column
+                 , alignItems center
+                 , (property "display" "flex")
+                 ] [] [ div [] channels
+                      , h1 [] [ text "NEW ADVENTURES IN SPOTI-FI" ]
+                      , div [] controls
+                      , div [] playing
+                      , div [] [ admin ]
+                      ]
 
 
