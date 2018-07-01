@@ -10,6 +10,8 @@ type alias Model =
     , user: Maybe User
     , channels: ChannelList
     , channelName: Maybe String
+    , searchTerm: Maybe String
+    , searchResults: List SearchResult
     }
 
 type alias Config =
@@ -38,3 +40,7 @@ type alias Channel =
 type alias ChannelList =
     { active: Maybe Channel
     , inactive: List Channel }
+
+type alias SearchResult =
+    { name: String
+    , trackURI: String }

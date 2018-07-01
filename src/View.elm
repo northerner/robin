@@ -66,6 +66,15 @@ view model =
                 Nothing ->
                     []
 
+        searchResultView result =
+            p [] [ text (result.name ++ " - " ++ result.trackURI) ]
+        searchResults =
+            case model.searchResults of
+                [] ->
+                    []
+                results ->
+                    List.map searchResultView results
+
         admin =
             case model.user of
                 Just user ->
@@ -83,7 +92,13 @@ view model =
                                             , placeholder "Channel name"
                                             , defaultValue user.channel.name
                                             , onInput SetChannelName ] []
-                                    , btn [ onClick (CreateChannel model.channelName model.trackURI) ] [ text "Update channel" ] ]
+                                    , btn [ onClick (CreateChannel model.channelName model.trackURI) ] [ text "Update channel" ]
+                                    , input [ type_ "text"
+                                            , placeholder "Search"
+                                            , defaultValue (Maybe.withDefault "" model.searchTerm)
+                                            , onInput SetSearchTerm ] []
+                                    , btn [ onClick (Search model.searchTerm) ] [ text "Search" ]
+                                    , div [] searchResults ]
                 _ ->
                     btn [ onClick SignInToFirebase ] [ text "Sign in to DJ" ]
 

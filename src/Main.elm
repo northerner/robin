@@ -22,8 +22,10 @@ init config location =
                         , config = config
                         , track = Nothing
                         , trackURI = Nothing
+                        , searchTerm = Nothing
                         , user = Nothing
                         , channelName = Nothing
+                        , searchResults = []
                         , channels = { active = Nothing, inactive = [] } }
 
                 timeoutIn =
@@ -47,6 +49,8 @@ init config location =
               , trackURI = Nothing
               , user = Nothing
               , channelName = Nothing
+              , searchTerm = Nothing
+              , searchResults = []
               , channels = { active = Nothing, inactive = [] }
               } , Cmd.none )
 

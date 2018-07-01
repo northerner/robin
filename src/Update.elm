@@ -1,6 +1,6 @@
 module Update exposing (..)
 
-import Model exposing (Model, Config, Track, User, Channel)
+import Model exposing (Model, Config, Track, User, Channel, SearchResult)
 import OutsideInfo exposing (InfoForElm, RawUser, channelWithDefault, sendInfoOutside)
 
 import OAuth
@@ -8,7 +8,7 @@ import OAuth.Implicit
 import Time exposing (Time)
 import Http
 import Navigation
-import Json.Decode exposing (int, string, float, bool, Decoder, map, map6, at, index, andThen, field)
+import Json.Decode exposing (int, string, float, bool, Decoder, map, map6, map2, at, index, andThen, field)
 import Json.Encode as Encode
 import Delay
 import List.Extra exposing (remove)
@@ -33,6 +33,9 @@ type Msg
     | SwitchChannel Channel
     | SetChannelName String
     | CreateChannel (Maybe String) (Maybe String)
+    | SetSearchTerm String
+    | Search (Maybe String)
+    | SearchResponse (Result Http.Error (List SearchResult))
 
 
 type Control
@@ -105,6 +108,26 @@ update msg model =
                 Nothing ->
                   model ! []
 
+        Search term ->
+            case model.token of
+                Just token ->
+                    let
+                        termParam = Maybe.withDefault "" term
+                        req =
+                            Http.request
+                                { method = "GET"
+                                , body = Http.emptyBody
+                                , headers = OAuth.use token []
+                                , withCredentials = False
+                                , url = "https://api.spotify.com/v1/search?type=track&q=" ++ termParam
+                                , expect = Http.expectJson searchDecoder
+                                , timeout = Nothing
+                                }
+                    in
+                        model ! [ Http.send SearchResponse req ]
+                Nothing ->
+                  model ! []
+
         DelayedGetPlaying ->
             model ! [ Delay.after 2 Time.second GetPlaying ]
 
@@ -112,6 +135,16 @@ update msg model =
             ( { model | track = Just track }, Cmd.none )
 
         PlayingResponse (Err error) ->
+            case error of
+                Http.BadStatus response ->
+                    update (LogErr response.body) model
+                _ ->
+                    model ! []
+
+        SearchResponse (Ok searchResults) ->
+            { model | searchResults = searchResults } ! []
+
+        SearchResponse (Err error) ->
             case error of
                 Http.BadStatus response ->
                     update (LogErr response.body) model
@@ -210,6 +243,9 @@ update msg model =
         SetChannelName channelName ->
             { model | channelName = Just channelName } ! []
 
+        SetSearchTerm searchTerm ->
+            { model | searchTerm = Just searchTerm } ! []
+
         CreateChannel channelName trackURI ->
             case model.user of
                 Just user ->
@@ -283,3 +319,11 @@ trackDecoder =
         (field "progress_ms" float)
         (at ["item", "duration_ms"] float)
         (field "is_playing" bool)
+
+searchDecoder =
+    at ["tracks"] (field "items" (Json.Decode.list searchResultDecoder))
+
+searchResultDecoder =
+    map2 SearchResult
+        (field "name" string)
+        (field "uri" string)
