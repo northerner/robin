@@ -49,10 +49,10 @@ view model =
 
         progress track =
             styled div [ height (px 2)
-                       , width (vw 100)
+                       , width (vw 50)
                        , backgroundColor Colors.black
                        ] [] [ styled div [ height (px 2)
-                                         , width (vw ((track.progressMs / track.durationMs) * 100))
+                                         , width (vw ((track.progressMs / track.durationMs) * 50))
                                          , backgroundColor theme.primary
                                          ] [] []
                        ]
@@ -67,7 +67,9 @@ view model =
                     []
 
         searchResultView result =
-            p [] [ text (result.name ++ " - " ++ result.trackURI) ]
+            p [] [ (btn [ onClick (CreateChannel model.channelName (Just result.trackURI))] [ text "Play" ])
+                 , text result.name
+                 ]
         searchResults =
             case model.searchResults of
                 [] ->
@@ -121,14 +123,26 @@ view model =
 
     in
       styled div [ width (vw 100)
-                 , flexDirection column
+                 , flexDirection row
+                 , flexWrap wrap
                  , alignItems center
+                 , justifyContent spaceBetween
                  , (property "display" "flex")
-                 ] [] [ div [] channels
-                      , h1 [] [ text "NEW ADVENTURES IN SPOTI-FI" ]
-                      , div [] controls
-                      , div [] playing
-                      , div [] [ admin ]
-                      ]
-
-
+                 ] [] [ styled div [ width (auto)
+                                   , maxWidth (px 600)
+                                   , padding (pc 2)
+                                   , flexDirection column
+                                   , alignItems center
+                                   , (property "display" "flex")
+                                   ] [] [ div [] channels
+                                        , h1 [] [ text "NEW ADVENTURES IN SPOTI-FI" ]
+                                        , div [] controls
+                                        , div [] playing
+                                        ]
+                      , styled div [ width (auto)
+                                   , padding (pc 2)
+                                   , flexDirection column
+                                   , alignItems center
+                                   , (property "display" "flex")
+                                   ] [] [ div [] [ admin ]
+                                        ]]
