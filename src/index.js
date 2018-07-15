@@ -33,8 +33,12 @@ app.ports.infoForOutside.subscribe(msg => {
     console.error(msg.data);
   } else if (msg.tag == "SignInToFirebase") {
     var provider = new firebase.auth.GoogleAuthProvider();
-    firebase.auth().signInWithPopup(provider).then(function(result) {
-      app.ports.infoForElm.send({ tag: "NewUser", data: result.user });
+    firebase.auth().signInWithPopup(provider)
+    .then(function(result) {
+      db.collection("channels").doc(result.user.uid)
+      .onSnapshot(function(doc) {
+        app.ports.infoForElm.send({ tag: "NewUser", data: { ownerUID: result.user.uid, name: (doc.name || "New"), nowPlayingURI: doc.nowPlayingURI  } });
+      })
     }).catch(function(error) {
       console.log(error);
     });

@@ -1,7 +1,7 @@
 module Update exposing (..)
 
 import Model exposing (Model, Config, Track, User, Channel, SearchResult)
-import OutsideInfo exposing (InfoForElm, RawUser, channelWithDefault, sendInfoOutside)
+import OutsideInfo exposing (InfoForElm, sendInfoOutside)
 
 import OAuth
 import OAuth.Implicit
@@ -197,7 +197,7 @@ update msg model =
 
                 OutsideInfo.NewUser rawUser ->
                     let
-                        user = { uid = rawUser.uid, channel = channelWithDefault rawUser.uid }
+                        user = { uid = rawUser.ownerUID, channel = rawUser }
                     in
                         { model | user = Just user } ! [ sendInfoOutside (OutsideInfo.GetUserChannel user) ]
 

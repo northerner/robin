@@ -140,6 +140,7 @@ view model =
                                         , div [] playing
                                         ]
                       , styled div [ width (auto)
+                                   , minWidth (px 400)
                                    , padding (pc 2)
                                    , flexDirection column
                                    , alignItems center

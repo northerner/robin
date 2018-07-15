@@ -44,7 +44,7 @@ getInfoFromOutside tagger onError =
                             onError e
 
                 "NewUser" ->
-                    case decodeValue rawUserDecoder outsideInfo.data of
+                    case decodeValue channelDecoder outsideInfo.data of
                         Ok user ->
                             tagger <| NewUser user
 
@@ -71,20 +71,11 @@ getInfoFromOutside tagger onError =
                     onError <| "Unexpected info from outside: " ++ toString outsideInfo
         )
 
-rawUserDecoder =
-    map RawUser
-        (field "uid" string)
-
 channelDecoder =
     map3 Channel
         (maybe (field "nowPlayingURI" string))
         (field "ownerUID" string)
         (field "name" string)
-
-channelWithDefault uid =
-    { ownerUID = uid
-    , name = "New channel"
-    , nowPlayingURI = Nothing }
 
 channelEncoder : Channel -> Encode.Value
 channelEncoder channel =
@@ -104,7 +95,7 @@ type InfoForOutside
 
 type InfoForElm
     = NewTrack String
-    | NewUser RawUser
+    | NewUser Channel
     | AllChannels (List Channel)
     | UpdateUserChannel Channel
 
@@ -112,11 +103,6 @@ type InfoForElm
 type alias GenericOutsideData =
     { tag : String, data : Encode.Value }
 
-type alias RawUser =
-    { uid: String }
-
 
 port infoForOutside : GenericOutsideData -> Cmd msg
-
-
 port infoForElm : (GenericOutsideData -> msg) -> Sub msg
