@@ -88,6 +88,8 @@ view model =
                                , width (vw 40)
                                , padding (em 0.5)
                                , flexDirection column
+                               , maxHeight (px 400)
+                               , overflow auto
                                , (property "display" "flex")
                                ] [] [ p [] [ text ("DJing channel " ++ user.channel.name) ]
                                     , input [ type_ "text"
