@@ -37,7 +37,7 @@ app.ports.infoForOutside.subscribe(msg => {
     .then(function(result) {
       db.collection("channels").doc(result.user.uid)
       .onSnapshot(function(doc) {
-        app.ports.infoForElm.send({ tag: "NewUser", data: { ownerUID: result.user.uid, name: (doc.name || "New"), nowPlayingURI: doc.nowPlayingURI  } });
+        app.ports.infoForElm.send({ tag: "NewUser", data: { ownerUID: result.user.uid, name: (doc.name || "New"), nowPlayingURI: (doc.nowPlayingURI || "fakeURI")  } });
       })
     }).catch(function(error) {
       console.log(error);

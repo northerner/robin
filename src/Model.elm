@@ -33,7 +33,7 @@ type alias User =
     , channel: Channel }
 
 type alias Channel =
-    { nowPlayingURI: Maybe String
+    { nowPlayingURI: String
     , ownerUID: String
     , name: String }
 

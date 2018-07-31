@@ -73,14 +73,14 @@ getInfoFromOutside tagger onError =
 
 channelDecoder =
     map3 Channel
-        (maybe (field "nowPlayingURI" string))
+        (field "nowPlayingURI" string)
         (field "ownerUID" string)
         (field "name" string)
 
 channelEncoder : Channel -> Encode.Value
 channelEncoder channel =
     Encode.object
-        [ ("nowPlayingURI", Encode.string (Maybe.withDefault "" channel.nowPlayingURI))
+        [ ("nowPlayingURI", Encode.string channel.nowPlayingURI)
         , ("name", Encode.string channel.name)
         ]
 

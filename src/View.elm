@@ -67,9 +67,13 @@ view model =
                     []
 
         searchResultView result =
-            p [] [ (btn [ onClick (CreateChannel model.channelName (Just result.trackURI))] [ text "Play" ])
-                 , text result.name
-                 ]
+            case model.user of
+                Just user ->
+                  p [] [ (btn [ onClick (CreateChannel user.channel.name result.trackURI)] [ text "Play" ])
+                       , text result.name
+                       ]
+                _ ->
+                  p [] []
         searchResults =
             case model.searchResults of
                 [] ->
@@ -88,13 +92,13 @@ view model =
                                ] [] [ p [] [ text ("DJing channel " ++ user.channel.name) ]
                                     , input [ type_ "text"
                                             , placeholder "Spotify track ID"
-                                            , defaultValue (Maybe.withDefault "" user.channel.nowPlayingURI)
+                                            , defaultValue user.channel.nowPlayingURI
                                             , onInput SetTrackURI ] []
                                     , input [ type_ "text"
                                             , placeholder "Channel name"
                                             , defaultValue user.channel.name
                                             , onInput SetChannelName ] []
-                                    , btn [ onClick (CreateChannel model.channelName model.trackURI) ] [ text "Update channel" ]
+                                    , btn [ onClick (CreateChannel user.channel.name user.channel.nowPlayingURI) ] [ text "Update channel" ]
                                     , input [ type_ "text"
                                             , placeholder "Search"
                                             , defaultValue (Maybe.withDefault "" model.searchTerm)

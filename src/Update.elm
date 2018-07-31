@@ -32,7 +32,7 @@ type Msg
     | GetChannels
     | SwitchChannel Channel
     | SetChannelName String
-    | CreateChannel (Maybe String) (Maybe String)
+    | CreateChannel String String
     | SetSearchTerm String
     | Search (Maybe String)
     | SearchResponse (Result Http.Error (List SearchResult))
@@ -251,8 +251,7 @@ update msg model =
                 Just user ->
                     let
                         currentChannel = user.channel
-                        newName = Maybe.withDefault "New channel" channelName
-                        channel = { currentChannel | name = newName, nowPlayingURI = trackURI }
+                        channel = { currentChannel | name = channelName, nowPlayingURI = trackURI }
                         newUser = Just { user | channel = channel }
                     in
                         { model | user = newUser } ! [ sendInfoOutside (OutsideInfo.CreateOrUpdateChannel channel) ]
